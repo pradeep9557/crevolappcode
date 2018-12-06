@@ -100,9 +100,10 @@ export class HomePage {
   		if(this.products.length > this.flags){
   			var fileurl = this.products[this.flags].image;
 	    	var filename = this.products[this.flags].imagename;
-	    	this.file.checkFile(this.file.externalApplicationStorageDirectory, this.products[this.flags].imagename).then(_ => 
-		  		console.log('Image exists'))
-		  	.catch(err => 
+	    	this.file.checkFile(this.file.externalApplicationStorageDirectory, this.products[this.flags].imagename).then(_ => {
+		  		console.log('Image exists');
+		  		this.loading.dismissAll();
+		  	}).catch(err => 
 		  		this.download(fileurl,filename)
 		  	);
 		  	this.flags++;
