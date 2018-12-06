@@ -36,7 +36,6 @@ export class HomePage {
   	public dataService: DataServiceProvider) {
   	this.flags = 0;
   	this.loading = this.loadingController.create({content : "Syncing ,please wait..."});
-  	this.dataService.checkFileDetails();
 		  this.nativeStorage.getItem('lastSyncTime')
 	  .then(
 	    data => {
@@ -48,6 +47,7 @@ export class HomePage {
   }
 
   download(url,name){
+  	console.log('Download called');
   	const fileTransfer: FileTransferObject = this.transfer.create();
   	 console.log('Download Started');
   	 console.log(this.file.dataDirectory);
@@ -55,28 +55,54 @@ export class HomePage {
   	 console.log(this.file.externalApplicationStorageDirectory);
      fileTransfer.download(url, this.file.externalApplicationStorageDirectory + name).then((entry) => {
 	    console.log('download complete: ' + entry.toURL());
-	    this.sync();
+	    this.callagain();
 	  }, (error) => {
+	  	this.callagain();
 	    // handle error
 	  });   
   }
 
-  ionViewDidLoad() {
-	console.log(2);
-	this.file.readAsText(this.file.externalRootDirectory, 'crevol/products1.txt')
+  loadData(){
+  	this.file.checkFile(this.file.externalRootDirectory+'crevol/', 'products1.txt').then(_ => {
+        this.file.readAsText(this.file.externalRootDirectory+'crevol/', 'products1.txt')
 	      .then(content=>{
-	        console.log(content);
+	        console.log('readAsText',content);
 	        this.products = JSON.parse(content);
 	        })
 	      .catch(err=>{
-	        console.log(err);
+	        console.log('readAsText',err);
 	      });
+      }
+    ).catch(err => {
+    	console.log(err);
+    });
+  }
+
+  ionViewDidLoad() {
+	console.log(2);
+	this.file.checkFile(this.file.externalRootDirectory+'crevol/', 'products1.txt').then(_ => {
+        this.file.readAsText(this.file.externalRootDirectory+'crevol/', 'products1.txt')
+	      .then(content=>{
+	        console.log('readAsText',content);
+	        this.products = JSON.parse(content);
+	        })
+	      .catch(err=>{
+	        console.log('readAsText',err);
+	      });
+      }
+    ).catch(err => {
+    	console.log(err);
+    	console.log(this.file.externalRootDirectory+'crevol/products1.txt');
+    	this.dataService.checkFileDetails();
+    	this.loadData();
+    });
+	
     // Put here the code you want to execute
    
   }
   callagain(){
 	this.flags++;
-	this.sync();
+	this.synccall();
   }
 
   subscribeNetwork(){
@@ -91,24 +117,33 @@ export class HomePage {
 	    this.displayNetworkUpdate(data.type);
 	}, error => console.error(error));
   }
-
   sync(){
+  	console.log('Sync called');
   	this.loading.present();
   	this.subscribeNetwork();
+  	this.synccall();
+  }
+
+  synccall(){
   	if(this.network.type!='none'){
-  		console.log(this.products);
+  		console.log('products',this.products);
+  		console.log('flag',this.flags);
   		if(this.products.length > this.flags){
+  			console.log('Entered in if');
+  			console.log(this.products[this.flags].image);
   			var fileurl = this.products[this.flags].image;
 	    	var filename = this.products[this.flags].imagename;
 	    	this.file.checkFile(this.file.externalApplicationStorageDirectory, this.products[this.flags].imagename).then(_ => {
 		  		console.log('Image exists');
-		  		this.loading.dismissAll();
+		  		this.flags++;
+		  		this.synccall();
 		  	}).catch(err => 
 		  		this.download(fileurl,filename)
 		  	);
-		  	this.flags++;
+		  	
   		}else{
-  			this.loading.dismissAll();
+  			console.log('Entered in Else',this.loading);
+  			this.loading.dismiss();
   		}
 	}
   }
@@ -122,9 +157,11 @@ export class HomePage {
 	}
 
 	scan() {
+	this.loadData();
 	  this.selectedProduct = {};
 	  this.barcodeScanner.scan().then((barcodeData) => {
 	  	console.log(barcodeData);
+	  	console.log(this.products);
 	  	this.barcodeCode = barcodeData.text;
 	    this.selectedProduct = this.products.find(product => product.plu === barcodeData.text);
 	    if(this.selectedProduct !== undefined) {
